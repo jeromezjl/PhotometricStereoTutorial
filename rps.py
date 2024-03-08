@@ -71,6 +71,8 @@ class PS(object):
             raise ValueError("filename is None")
         mask = psutil.load_image(filename=filename)
         mask = mask.reshape((-1, 1))
+        print(f"mask shape is:{mask.shape}")
+
         self.foreground_ind = np.where(mask != 0)[0]
         self.background_ind = np.where(mask == 0)[0]
 
@@ -97,25 +99,56 @@ class PS(object):
         if self.M.shape[1] != self.L.shape[1]:
             raise ValueError("Inconsistent dimensionality between M and L")
 
-        #############################################
+        # #############################################
+        #
+        # # Please write your code here to solve the surface normal N whose size is (p, 3) as discussed in the tutorial
+        #
+        # # Step 1: solve Ax = b
+        # # Hint: You can use np.linalg.lstsq(A, b) to solve Ax = b
+        #
+        # # 根据前景掩码选择有效像素
+        # I = self.M[self.foreground_ind, :].T  # 50行，20317列
+        #
+        # # 光照矩阵
+        # L = self.L.T  # 50行，3列
+        #
+        # # 最小二乘法求解法向量 N
+        # self.N = np.linalg.lstsq(L, I, rcond=None)[0].T  # 解出的 N 需要转置，以使其行对应于不同的像素点，3行，20317列
+        #
+        # # Step 2: We need to normalize the normal vectors as the norm of the normal vectors should be 1
+        # # Hint: You can use function normalize from sklearn.preprocessing
+        #
+        # # 化为单位向量
+        # self.N = normalize(self.N, axis=1)
+        #
+        # #############################################
+        #
+        # # self.N = self.N.T
+        #
+        # print(self.background_ind.shape)
+        # print(self.foreground_ind.shape)
+        # #
+        # # if self.background_ind is not None:
+        # #     for i in range(self.N.shape[1]):
+        # #         self.N[self.background_ind, i] = 0
 
-        # Please write your code here to solve the surface normal N whose size is (p, 3) as discussed in the tutorial
+        # 根据前景掩码选择有效像素
+        I = self.M[self.foreground_ind, :].T  # 取出前景像素的测量矩阵
+        L = self.L.T
+        # 最小二乘法求解法向量 N
+        N_foreground = np.linalg.lstsq(L, I, rcond=None)[0].T  # 解出的 N 需要转置，使其行对应于不同的像素点
 
-        # Step 1: solve Ax = b
-        # Hint: You can use np.linalg.lstsq(A, b) to solve Ax = b
+        # 归一化法向量
+        N_foreground = normalize(N_foreground, axis=1)
 
-        # self.N = ???
+        # 初始化包含所有像素法向量的矩阵，初始为零
+        total_pixels = self.M.shape[0]  # 总像素数为 M 的行数
+        N_all = np.zeros((total_pixels, 3))  # 初始化全零矩阵
 
-        # Step 2: We need to normalize the normal vectors as the norm of the normal vectors should be 1
-        # Hint: You can use function normalize from sklearn.preprocessing
+        # 将前景像素的法向量填充到 N_all 中对应的位置
+        N_all[self.foreground_ind, :] = N_foreground
 
-        # self.N = ???
+        # 背景像素的法向量已经是零，无需额外操作
 
-
-        #############################################
-
-        if self.background_ind is not None:
-            for i in range(self.N.shape[1]):
-                self.N[self.background_ind, i] = 0
-
-
+        # 更新 self.N 为包含所有像素的法向量矩阵
+        self.N = N_all
